@@ -195,7 +195,7 @@
         "no"
       ],
       "metadata": {
-        "description": "Setup an Azure File Service share to store the Elasticsearch data (ubuntu, elasticsearch 2.x only)"
+        "description": "Setup an Azure File Service share to store the Elasticsearch data (elasticsearch 2.x only)"
       }
     },
     "marvel": {
@@ -392,8 +392,8 @@
         "no": "[concat(' -a ', variables('storageAccountNameAFS'), ' -k ')]"
       },
       "windows": {
-        "yes":"",
-        "no":""
+        "yes":"[concat(' -afsAccount ', variables('storageAccountNameAFS'), ' -afsKey ')]",
+        "no":" -afsKey "
       } 
     },
     "marvelExportParam" : {
@@ -432,7 +432,9 @@
       "[concat(variables('scriptBaseUrl'), 'afs-utils-0.1.sh')]"
     ],
     "windowsScripts": [
-      "[concat(variables('templateBaseUrl'), 'elasticsearch-windows-install.ps1')]"
+      "[concat(variables('templateBaseUrl'), 'elasticsearch-windows-install.ps1')]",
+      "[concat(variables('templateBaseUrl'), 'PsExec.exe')]",
+      "[concat(variables('templateBaseUrl'), 'ntrights.exe')]"
     ],
     "authSet": {
         "password": "[parameters('adminPassword')]",
@@ -488,7 +490,7 @@
             "typeHandlerVersion": "1.4",
             "settings": {
               "fileUris": "[variables('ubuntuScripts')]",
-              "commandToExecute": "[concat('bash elasticsearch-ubuntu-install.sh -yn ', variables('esSettings').clusterName, ' -v ', variables('esSettings').version, ' -d ', variables('esSettings').discoveryHosts, variables('marvelParamValue'), variables('jmeterParamValue'),  variables('cloudAzureParamValue'),variables('marvelExportParamValue'), variables('afsParamValue'))]"
+              "commandToExecute": "[concat('bash elasticsearch-ubuntu-install.sh -yn ', variables('esSettings').clusterName, ' -v ', variables('esSettings').version, ' -d ', variables('esSettings').discoveryHosts, variables('marvelParamValue'), variables('jmeterParamValue'),  variables('cloudAzureParamValue'), variables('marvelExportParamValue'), variables('afsParamValue'))]"
             }
           },
         "data": {
@@ -497,7 +499,7 @@
           "typeHandlerVersion": "1.4",
           "settings": {
             "fileUris": "[variables('ubuntuScripts')]",
-            "commandToExecute": "[concat('bash elasticsearch-ubuntu-install.sh -zn ', variables('esSettings').clusterName, ' -v ', variables('esSettings').version, ' -d ', variables('esSettings').discoveryHosts, variables('marvelParamValue'), variables('jmeterParamValue'),  variables('cloudAzureParamValue'),variables('marvelExportParamValue'), variables('afsParamValue'))]"
+            "commandToExecute": "[concat('bash elasticsearch-ubuntu-install.sh -zn ', variables('esSettings').clusterName, ' -v ', variables('esSettings').version, ' -d ', variables('esSettings').discoveryHosts, variables('marvelParamValue'), variables('jmeterParamValue'),  variables('cloudAzureParamValue'), variables('marvelExportParamValue'), variables('afsParamValue'))]"
           }
         },
         "kibana": {
@@ -527,7 +529,7 @@
           "typeHandlerVersion": "1.4",
           "settings": {
             "fileUris": "[variables('windowsScripts')]",
-            "commandToExecute": "[concat('powershell.exe -File elasticsearch-windows-install.ps1 -elasticSearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').marvelClusterName,' -discoveryEndpoints ', variables('esSettings').marvelHosts, ' -marvelOnlyNode -storageKey ')]"
+            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File elasticsearch-windows-install.ps1 -elasticsearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').marvelClusterName,' -discoveryEndpoints ', variables('esSettings').marvelHosts, ' -marvelOnlyNode -afsKey ')]"
           }
         },
         "master": {
@@ -536,7 +538,7 @@
           "typeHandlerVersion": "1.4",
           "settings": {
             "fileUris": "[variables('windowsScripts')]",
-            "commandToExecute": "[concat('powershell.exe -File elasticsearch-windows-install.ps1 -elasticSearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), ' -masterOnlyNode -storageKey ')]"
+            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File elasticsearch-windows-install.ps1 -elasticsearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, ' -username ', parameters('adminUsername'), ' -password ', parameters('adminPassword'), variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), variables('jmeterParamValue'), ' -masterOnlyNode ', variables('afsParamValue'))]"
           }
         },
         "client": {
@@ -545,7 +547,7 @@
           "typeHandlerVersion": "1.4",
           "settings": {
             "fileUris": "[variables('windowsScripts')]",
-            "commandToExecute": "[concat('powershell.exe -File elasticsearch-windows-install.ps1 -elasticSearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), ' -clientOnlyNode -storageKey ')]"
+            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File elasticsearch-windows-install.ps1 -elasticsearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, ' -username ', parameters('adminUsername'), ' -password ', parameters('adminPassword'), variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), variables('jmeterParamValue'), ' -clientOnlyNode ', variables('afsParamValue'))]"
           }
         },
         "data": {
@@ -554,7 +556,7 @@
           "typeHandlerVersion": "1.4",
           "settings": {
             "fileUris": "[variables('windowsScripts')]",
-            "commandToExecute": "[concat('powershell.exe -File elasticsearch-windows-install.ps1 -elasticSearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), ' -dataOnlyNode -storageKey ')]"
+            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File elasticsearch-windows-install.ps1 -elasticsearchVersion ', variables('esSettings').version,' -elasticClusterName ', variables('esSettings').clusterName,' -discoveryEndpoints ', variables('esSettings').discoveryHosts, ' -username ', parameters('adminUsername'), ' -password ', parameters('adminPassword'), variables('cloudAzureParamValue'), variables('marvelParamValue'), variables('marvelExportParamValue'), variables('jmeterParamValue'), ' -dataOnlyNode ', variables('afsParamValue'))]"
           }
         }
       }
