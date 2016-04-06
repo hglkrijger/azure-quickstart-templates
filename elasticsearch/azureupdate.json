@@ -1,0 +1,126 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "templateBase": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master",
+      "metadata": {
+        "description": "Change this value to your repo name if deploying from a fork"
+      }
+    },
+    "scriptFile": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the script to execute"
+      }
+    },
+    "esClusterName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the cluster to update"
+      }
+    },
+    "vmClientNodeCount": {
+      "type": "int",
+      "defaultValue": 2
+    },
+    "vmDataNodeCount": {
+      "type": "int",
+      "defaultValue": 5
+    },
+    "afsShare": {
+      "type": "string"
+    },
+    "afsAccount": {
+      "type": "string"
+    },
+    "afsKey": {
+      "type": "securestring"
+    },
+    "username": {
+      "type": "string"
+    },
+    "password": {
+      "type": "securestring"
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "clientVmName": "[concat(parameters('esClusterName'), '-client-vm')]",
+    "masterVmName": "[concat(parameters('esClusterName'), '-master-vm')]",
+    "dataVmName": "[concat(parameters('esClusterName'), '-data-vm')]",
+    "scriptParameters": "[concat(' -afsKey ', parameters('afsKey'), ' -afsAccount ', parameters('afsAccount'), ' -afsShare ', parameters('afsShare'), ' -username ', parameters('username'), ' -password ', parameters('password'))]",
+    "command": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File ', parameters('scriptFile'), variables('scriptParameters'))]",
+    "templateBaseUrl": "[concat(parameters('templateBase'), '/elasticsearch/')]",
+    "files": [
+      "[concat(variables('templateBaseUrl'), parameters('scriptFile'))]",
+      "[concat(variables('templateBaseUrl'), 'PsExec.exe')]",
+      "[concat(variables('templateBaseUrl'), 'ntrights.exe')]"
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('clientVmName'), copyindex(), '/installelasticsearch')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "clientLoop",
+        "count": "[parameters('vmClientNodeCount')]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.7",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": "[variables('files')]",
+          "commandToExecute": "[variables('command')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('dataVmName'), copyindex(), '/installelasticsearch')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "dataLoop",
+        "count": "[parameters('vmDataNodeCount')]"
+      },
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.7",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": "[variables('files')]",
+          "commandToExecute": "[variables('command')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('masterVmName'), copyindex(), '/installelasticsearch')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "masterLoop",
+        "count": 3
+      },
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.7",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": "[variables('files')]",
+          "commandToExecute": "[variables('command')]"
+        }
+      }
+    }
+  ]
+}

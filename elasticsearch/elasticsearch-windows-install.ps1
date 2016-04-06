@@ -28,11 +28,11 @@
 		Installs elastic search on the given nodes.
 	.DESCRIPTION
 		This script runs as a VM extension and installs elastic search on the cluster nodes. It can be used to setup either a single VM (when run as VM extension) or a cluster (when run from within an ARM template)
-	.PARAMETER elasticSearchVersion
+	.PARAMETER elasticsearchVersion
 		Version of elasticsearch to install e.g. 1.7.3
     .PARAMETER jdkDownloadLocation
         Url of the JDK installer e.g. http://download.oracle.com/otn-pub/java/jdk/8u65-b17/jdk-8u65-windows-x64.exe
-    .PARAMETER elasticSearchBaseFolder
+    .PARAMETER elasticsearchBaseFolder
         Disk location of the base folder of elasticsearch installation.
     .PARAMETER discoveryEndpoints
         Formatted string of the allowed subnet addresses for unicast internode communication e.g. 10.0.0.4-3 is expanded to [10.0.0.4,10.0.0.5,10.0.0.6]
@@ -45,20 +45,23 @@
     .PARAMETER dataOnlyNode
         Setup a VM as data only node
 	.EXAMPLE
-		elasticSearchVersion 1.7.2 -elasticClusterName evilescluster -discoveryEndpoints 10.0.0.4-5 -masterOnlyNode
+		elasticsearchVersion 1.7.2 -elasticClusterName evilescluster -discoveryEndpoints 10.0.0.4-5 -masterOnlyNode
         Installs 1.7.2 version of elasticsearch with cluster name evilescluster and 5 allowed subnet addresses from 4 to 8. Sets up the VM as master node.
     .EXAMPLE
-        elasticSearchVersion 1.7.3 -elasticSearchBaseFolder software -elasticClusterName evilescluster -discoveryEndpoints 10.0.0.3-4 -dataOnlyNode
+        elasticsearchVersion 1.7.3 -elasticsearchBaseFolder software -elasticClusterName evilescluster -discoveryEndpoints 10.0.0.3-4 -dataOnlyNode
         Installs 1.7.3 version of elasticsearch with cluster name evilescluster and 4 allowed subnet addresses from 3 to 6. Sets up the VM as data node.
 #>
 Param(
-    [Parameter(Mandatory=$true)][string]$elasticSearchVersion,
+    [Parameter(Mandatory=$true)][string]$elasticsearchVersion,
     [string]$jdkDownloadLocation,
-	[string]$elasticSearchBaseFolder,
+	[string]$elasticsearchBaseFolder,
     [string]$discoveryEndpoints,
 	[string]$elasticClusterName,
-    [string]$storageKey,
+    [string]$afsKey,
+    [string]$afsAccount,
     [string]$marvelEndpoints,
+	[string]$username,
+	[string]$password,
 	[string]$po,
 	[string]$r,
     [switch]$marvelOnlyNode,
@@ -66,7 +69,7 @@ Param(
 	[switch]$clientOnlyNode,
 	[switch]$dataOnlyNode,
 	[switch]$m,
-	[switch]$jmeterConfig
+	[switch]$j
 )
 
 # To set the env vars permanently, need to use registry location
@@ -297,15 +300,15 @@ function SetEnv-HeapSize
 }
 
 
-function Install-ElasticSearch ($driveLetter, $elasticSearchZip, $subFolder = $elasticSearchBaseFolder)
+function Install-ElasticSearch ($driveLetter, $elasticsearchZip, $subFolder = $elasticsearchBaseFolder)
 {
 	# Designate unzip location 
-	$elasticSearchPath =  Join-Path "$driveLetter`:" -ChildPath $subFolder
+	$elasticsearchPath =  Join-Path "$driveLetter`:" -ChildPath $subFolder
 	
 	# Unzip
-	Unzip-Archive $elasticSearchZip $elasticSearchPath
+	Unzip-Archive $elasticsearchZip $elasticsearchPath
 
-	return $elasticSearchPath
+	return $elasticsearchPath
 }
 
 function Implode-Host([string]$discoveryHost)
@@ -486,6 +489,96 @@ function Jmeter-Run($unzipLoc)
     Start-Process -FilePath $targetPath -WindowStyle Minimized | Out-Null
 }
 
+function Issue-Signed-Request($method, $urlParam, $resource)
+{   
+    $requestDate = Get-Date
+    $requestDate = $requestDate.ToUniversalTime().ToString('R')
+    $fullUri = "https://$afsAccount.file.core.windows.net/$urlParam"
+
+    $version = "2015-04-05"
+    $headerDate = "x-ms-date:$requestDate"
+    $headerVersion = "x-ms-version:$version"
+
+    $canonicalResource = "/$afsAccount/$resource"
+    $canonicalHeaders = "$headerDate`n$headerVersion`n"
+
+    $stringToSign = "$method`n`n`n`n`n`n`n`n`n`n`n`n$canonicalHeaders$canonicalResource"
+
+    $hmacsha = New-Object System.Security.Cryptography.HMACSHA256
+    $hmacsha.key = [Convert]::FromBase64String($afsKey)
+    $signature = $hmacsha.ComputeHash([Text.Encoding]::UTF8.GetBytes($stringToSign))
+    $signature = [Convert]::ToBase64String($signature)
+    
+    $headerAuth = "SharedKey $afsAccount`:$signature"
+    
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("x-ms-version", $version)
+    $headers.Add("x-ms-date", $requestDate)
+    $headers.Add("Authorization", $headerAuth)
+
+    $progressPreference = 'silentlyContinue'
+    $response = Invoke-WebRequest -UseBasicParsing -Method $method -Uri $fullUri -Headers $headers -ErrorAction Stop
+    $content = [string]$response.Content
+    
+    # return as xml if possible
+    $xmlIndicator = "<?xml"
+    if ($content.Contains($xmlIndicator))
+    {
+        $content = [xml]($content).Substring($content.IndexOf($xmlIndicator));
+    }
+
+    return $content
+}
+
+function List-Shares
+{
+    lmsg "listing shares"
+    return Issue-Signed-Request "GET" "?comp=list" "`ncomp:list"
+}
+
+function Create-Share($shareName)
+{
+    $existingShares = List-Shares
+    $exists = $existingShares.SelectSingleNode("//Shares/Share[Name='$shareName']") -ne $null
+
+    if ($exists -eq $false)
+    {
+        lmsg "creating share $shareName in account $afsAccount"
+        Issue-Signed-Request "PUT" "$shareName`?restype=share" "$shareName`nrestype:share"
+    }
+    else
+    {
+        lmsg "share $shareName already exists in account $afsAccount, skipping share creation"
+    }
+}
+
+function Mount-Share($share)
+{
+	lmsg "mounting share"
+	net use * \\$afsAccount.file.core.windows.net\$share /persistent:yes /user:$afsAccount $afsKey
+
+	lmsg "adding credentials to store"
+	cmdkey /add:$afsAccount.file.core.windows.net /user:$afsAccount /pass:$afsKey
+}
+
+function Initialize-Afs($share)
+{
+    $result = $false
+	
+    if($afsAccount.Length -ne 0 -and $afsKey.Length -ne 0)
+    {
+		# create share if necessary
+		Create-Share $share
+
+		# mount share
+		Mount-Share $share
+		
+		$result = $true
+    }
+    
+    return $result
+}
+
 function Install-WorkFlow
 {
 	# Start script
@@ -499,6 +592,14 @@ function Install-WorkFlow
     {
         $folderPathSetting = (Create-DataFolders $dc 'elasticsearch\data')
     }
+    
+    # mount and persist AFS, supporting a single share
+    $shareName = "esdata00"
+    $init = Initialize-Afs $shareName
+    if ($init)
+    {
+        $sharedDataPathSetting = "\\$afsAccount.file.core.windows.net\$shareName"
+    }
 
 	# Set first drive
     $firstDrive = (get-location).Drive.Name
@@ -510,11 +611,11 @@ function Install-WorkFlow
 	$jdkInstallLocation = Install-Jdk $jdkSource $firstDrive
 
 	# Download elastic search zip
-	$elasticSearchZip = Download-ElasticSearch $elasticSearchVersion $firstDrive
+	$elasticsearchZip = Download-ElasticSearch $elasticsearchVersion $firstDrive
 	
 	# Unzip (install) elastic search
-	if($elasticSearchBaseFolder.Length -eq 0) { $elasticSearchBaseFolder = 'elasticSearch'}
-	$elasticSearchInstallLocation = Install-ElasticSearch $firstDrive $elasticSearchZip
+	if($elasticsearchBaseFolder.Length -eq 0) { $elasticsearchBaseFolder = 'elasticsearch'}
+	$elasticsearchInstallLocation = Install-ElasticSearch $firstDrive $elasticsearchZip
 
 	# Set JAVA_HOME
     SetEnv-JavaHome $jdkInstallLocation
@@ -527,9 +628,9 @@ function Install-WorkFlow
     if($discoveryEndpoints.Length -ne 0) { $ipAddresses = Implode-Host2 $discoveryEndpoints }
 		
 	# Extract install folders
-	$elasticSearchBinParent = (gci -path $elasticSearchInstallLocation -filter "bin" -Recurse).Parent.FullName
-	$elasticSearchBin = Join-Path $elasticSearchBinParent -ChildPath "bin"
-	$elasticSearchConfFile = Join-Path $elasticSearchBinParent -ChildPath "config\elasticsearch.yml"
+	$elasticsearchBinParent = (gci -path $elasticsearchInstallLocation -filter "bin" -Recurse).Parent.FullName
+	$elasticsearchBin = Join-Path $elasticsearchBinParent -ChildPath "bin"
+	$elasticsearchConfFile = Join-Path $elasticsearchBinParent -ChildPath "config\elasticsearch.yml"
 		
 	# Set values
     lmsg "Configure cluster name to $elasticClusterName"
@@ -543,6 +644,13 @@ function Install-WorkFlow
     if($folderPathSetting -ne $null)
     {
         $textToAppend = $textToAppend + "`npath.data: $folderPathSetting"
+    }
+    
+    if($sharedDataPathSetting.Length -ne 0)
+    {
+        $textToAppend = $textToAppend + "`npath.shared_data: $sharedDataPathSetting"
+        $textToAppend = $textToAppend + "`nnode.enable_custom_paths: true"
+        $textToAppend = $textToAppend + "`nnode.add_id_to_custom_path: false"
     }
 
     if($masterOnlyNode)
@@ -575,7 +683,7 @@ function Install-WorkFlow
     }
 
     # In ES 2.x you explicitly need to set network host to _non_loopback_ or the IP address of the host else other nodes cannot communicate
-    if ($elasticSearchVersion -match '2.')
+    if ($elasticsearchVersion -match '2.')
     {
         $textToAppend = $textToAppend + "`nnetwork.host: _non_loopback_"
     }
@@ -583,16 +691,16 @@ function Install-WorkFlow
 	# configure the cloud-azure plugin, if selected
 	if ($po.Length -ne 0 -and $r.Length -ne 0)
 	{
-		if ($elasticSearchVersion -match '2.')
+		if ($elasticsearchVersion -match '2.')
 		{
-			cmd.exe /C "$elasticSearchBin\plugin.bat install cloud-azure"
+			cmd.exe /C "$elasticsearchBin\plugin.bat install cloud-azure"
 			
 			$textToAppend = $textToAppend + "`ncloud.azure.storage.default.account: $po"
 			$textToAppend = $textToAppend + "`ncloud.azure.storage.default.key: $r"
 		}
 		else
 		{
-			cmd.exe /C "$elasticSearchBin\plugin.bat -i elasticsearch/elasticsearch-cloud-azure/2.8.2"
+			cmd.exe /C "$elasticsearchBin\plugin.bat -i elasticsearch/elasticsearch-cloud-azure/2.8.2"
 			
 			$textToAppend = $textToAppend + "`ncloud.azure.storage.account: $po"
 			$textToAppend = $textToAppend + "`ncloud.azure.storage.key: $r"
@@ -603,7 +711,7 @@ function Install-WorkFlow
     if($marvelEndpoints.Length -ne 0)
     {
         $marvelIPAddresses = Implode-Host2 $marvelEndpoints
-        if ($elasticSearchVersion -match '2.')
+        if ($elasticsearchVersion -match '2.')
         {
             $textToAppend = $textToAppend + "`nmarvel.agent.exporters:`n  id1:`n    type: http`n    host: [$marvelIPAddresses]"
         }
@@ -613,36 +721,36 @@ function Install-WorkFlow
         }
     }
         
-    if ($marvelOnlyNode -and ($elasticSearchVersion -match '1.'))
+    if ($marvelOnlyNode -and ($elasticsearchVersion -match '1.'))
     {
         $textToAppend = $textToAppend + "`nmarvel.agent.enabled: false"
     }
 
-    Add-Content $elasticSearchConfFile $textToAppend
+    Add-Content $elasticsearchConfFile $textToAppend
 		
     # Add firewall exceptions
     Elasticsearch-OpenPorts
 
     # Install service using the batch file in bin folder
-    $scriptPath = Join-Path $elasticSearchBin -ChildPath "service.bat"
+    $scriptPath = Join-Path $elasticsearchBin -ChildPath "service.bat"
     ElasticSearch-InstallService $scriptPath
 
     # Install marvel if specified
     if ($m)
     {
-        if ($elasticSearchVersion -match '2.')
+        if ($elasticsearchVersion -match '2.')
         {
-            cmd.exe /C "$elasticSearchBin\plugin.bat install license"
-            cmd.exe /C "$elasticSearchBin\plugin.bat install marvel-agent"
+            cmd.exe /C "$elasticsearchBin\plugin.bat install license"
+            cmd.exe /C "$elasticsearchBin\plugin.bat install marvel-agent"
         }
         else
         {
-            cmd.exe /C "$elasticSearchBin\plugin.bat -i elasticsearch/marvel/1.3.1"
+            cmd.exe /C "$elasticsearchBin\plugin.bat -i elasticsearch/marvel/1.3.1"
         }
     }
 
 	# Temporary measure to configure each ES node for JMeter server agent
-	if ($jmeterConfig)
+	if ($j)
 	{
 		$jmZip = Jmeter-Download $firstDrive
 		$unzipLocation = Jmeter-Unzip $jmZip $firstDrive
@@ -660,13 +768,14 @@ function Install-WorkFlow
 function Startup-Output
 {
 	lmsg 'Install workflow starting with following params:'
-    lmsg "Elasticsearch version: $elasticSearchVersion"
+    lmsg "Elasticsearch version: $elasticsearchVersion"
     if($elasticClusterName.Length -ne 0) { lmsg "Elasticsearch cluster name: $elasticClusterName" }
     if($jdkDownloadLocation.Length -ne 0) { lmsg "Jdk download location: $jdkDownloadLocation" }
-    if($elasticSearchBaseFolder.Length -ne 0) { lmsg "Elasticsearch base folder: $elasticSearchBaseFolder" }
+    if($elasticsearchBaseFolder.Length -ne 0) { lmsg "Elasticsearch base folder: $elasticsearchBaseFolder" }
     if($discoveryEndpoints.Length -ne 0) { lmsg "Discovery endpoints: $discoveryEndpoints" }
     if($marvelEndpoints.Length -ne 0) { lmsg "Marvel endpoints: $marvelEndpoints" }
 	if($po.Length -ne 0 -and $r.Length -ne 0) { lmsg "Installing cloud-azure plugin" }
+    if($afsAccount.Length -ne 0 -and $afsKey.Length -ne 0) { lmsg "Using AFS for storage" }
     if($masterOnlyNode) { lmsg 'Node installation mode: Master' }
     if($clientOnlyNode) { lmsg 'Node installation mode: Client' }
     if($dataOnlyNode) { lmsg 'Node installation mode: Data' }
