@@ -111,11 +111,7 @@
     "networkApiVersion": "2016-03-30",
     "storageApiVersion": "2015-06-15",
     "insightsApiVersion": "2015-04-01",
-    "templateBaseUrl": "[concat(parameters('templateBase'), '/elasticsearch-vmss/')]",
-    "deploymentFiles": [
-      "[concat(variables('templateBaseUrl'), 'elasticsearch-install.sh')]",
-      "[concat(variables('templateBaseUrl'), 'azuresearch-blob-discovery-plugin.zip')]"
-    ]
+    "templateBaseUrl": "[concat(parameters('templateBase'), '/elasticsearch-vmss/')]"
   },
   "resources": [
     {
@@ -198,7 +194,7 @@
               "backendAddressPool": {
                 "id": "[variables('lbPoolID')]"
               },
-              "protocol": "tcp",
+              "protocol": "Tcp",
               "frontendPort": 9200,
               "backendPort": 9200,
               "enableFloatingIP": false,
@@ -213,10 +209,10 @@
           {
             "name": "tcpProbe",
             "properties": {
-              "protocol": "Http",
+              "protocol": "Tcp",
               "port": 9200,
-              "intervalInSeconds": "30",
-              "numberOfProbes": "2"
+              "intervalInSeconds": 30,
+              "numberOfProbes": 2
             }
           }
         ],
@@ -282,7 +278,7 @@
               {
                 "name": "[variables('nicName')]",
                 "properties": {
-                  "primary": "true",
+                  "primary": true,
                   "ipConfigurations": [
                     {
                       "name": "[variables('ipConfigName')]",
@@ -317,7 +313,10 @@
                   "typeHandlerVersion": "1.4",
                   "autoUpgradeMinorVersion": true,
                   "settings": {
-                    "fileUris": "[variables('deploymentFiles')]",
+                    "fileUris": [
+                      "[concat(variables('templateBaseUrl'), 'elasticsearch-install.sh')]",
+                      "[concat(variables('templateBaseUrl'), 'azuresearch-blob-discovery-plugin.zip')]"
+                    ],
                     "commandToExecute": "[concat('bash elasticsearch-install.sh -n ', parameters('clusterName'), ' -a ', variables('diagnosticsStorageAccountName'), ' -k ', listkeys(variables('accountid'), variables('storageApiVersion')).key1)]"
                   }
                 }
@@ -346,7 +345,7 @@
       }
     },
     {
-      "type": "Microsoft.Insights/autoscaleSettings",
+      "type": "Microsoft.Insights/autoscalesettings",
       "apiVersion": "[variables('insightsApiVersion')]",
       "name": "autoscalewad",
       "location": "[resourceGroup().location]",
@@ -361,9 +360,9 @@
           {
             "name": "Profile1",
             "capacity": {
-              "minimum": "1",
-              "maximum": "10",
-              "default": "1"
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1
             },
             "rules": [
               {
@@ -381,7 +380,7 @@
                 "scaleAction": {
                   "direction": "Increase",
                   "type": "ChangeCount",
-                  "value": "1",
+                  "value": 1,
                   "cooldown": "PT15M"
                 }
               },
@@ -400,8 +399,8 @@
                 "scaleAction": {
                   "direction": "Decrease",
                   "type": "ChangeCount",
-                  "value": "1",
-                  "cooldown": "PT15M"
+                  "value": 1,
+                  "cooldown": "PT30M"
                 }
               }
             ]
