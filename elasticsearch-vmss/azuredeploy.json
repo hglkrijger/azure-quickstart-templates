@@ -317,7 +317,7 @@
                       "[concat(variables('templateBaseUrl'), 'install-elasticsearch.sh')]",
                       "[concat(variables('templateBaseUrl'), 'azuresearch-blob-discovery-plugin.zip')]"
                     ],
-                    "commandToExecute": "[concat('bash elasticsearch-install.sh -n ', parameters('clusterName'), ' -a ', variables('diagnosticsStorageAccountName'), ' -k ', listkeys(variables('accountid'), variables('storageApiVersion')).key1)]"
+                    "commandToExecute": "[concat('bash install-elasticsearch.sh -n ', parameters('clusterName'), ' -a ', variables('diagnosticsStorageAccountName'), ' -k ', listkeys(variables('accountid'), variables('storageApiVersion')).key1)]"
                   }
                 }
               },
