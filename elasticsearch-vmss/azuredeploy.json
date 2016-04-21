@@ -314,7 +314,7 @@
                   "autoUpgradeMinorVersion": true,
                   "settings": {
                     "fileUris": [
-                      "[concat(variables('templateBaseUrl'), 'elasticsearch-install.sh')]",
+                      "[concat(variables('templateBaseUrl'), 'install-elasticsearch.sh')]",
                       "[concat(variables('templateBaseUrl'), 'azuresearch-blob-discovery-plugin.zip')]"
                     ],
                     "commandToExecute": "[concat('bash elasticsearch-install.sh -n ', parameters('clusterName'), ' -a ', variables('diagnosticsStorageAccountName'), ' -k ', listkeys(variables('accountid'), variables('storageApiVersion')).key1)]"
