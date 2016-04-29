@@ -110,7 +110,7 @@ install_kibana() {
     fi
 
 # Add upstart task and start kibana service
-cat << EOF > /etc/init/kibana.conf
+cat << EOF > /etc/init.d/kibana.conf
     # kibana
     description "Elasticsearch Kibana Service"
 
@@ -120,7 +120,7 @@ cat << EOF > /etc/init/kibana.conf
     end script
 EOF
 
-    chmod +x /etc/init/kibana.conf
+    chmod +x /etc/init.d/kibana.conf
     service kibana start
 }
 
