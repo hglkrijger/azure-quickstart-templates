@@ -43,11 +43,12 @@ error()
 }
 
 install_java() {
-    add-apt-repository -y ppa:webupd8team/java
-    apt-get -q -y update  > /dev/null
-    echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections
-    echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections
-    apt-get -q -y install oracle-java8-installer  > /dev/null
+    #add-apt-repository -y ppa:webupd8team/java
+    #apt-get -q -y update  > /dev/null
+    #echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections
+    #echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections
+    #apt-get -q -y install oracle-java8-installer  > /dev/null
+	yum -y install java-1.8.0-openjdk.x86_64
 }
 
 install_kibana() {
