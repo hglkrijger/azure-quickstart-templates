@@ -201,11 +201,13 @@ setup_data_disk()
 install_java()
 {
     log "Installing Java"
-    add-apt-repository -y ppa:webupd8team/java
-    apt-get -y update  > /dev/null
-    echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections
-    echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections
-    apt-get -y install oracle-java8-installer  > /dev/null
+    #add-apt-repository -y ppa:webupd8team/java
+    #apt-get -y update  > /dev/null
+    #echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections
+    #echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections
+    #apt-get -y install oracle-java8-installer  > /dev/null
+
+	yum -y install java-1.8.0-openjdk.x86_64
 }
 
 # Install Elasticsearch
@@ -214,21 +216,23 @@ install_es()
 	
 	# Elasticsearch 2.x uses a different download path
     if [[ "${ES_VERSION}" == \2* ]]; then
-        DOWNLOAD_URL="https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/$ES_VERSION/elasticsearch-$ES_VERSION.deb"
+		DOWNLOAD_URL="https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/$ES_VERSION/elasticsearch-$ES_VERSION.rpm"
     else
         DOWNLOAD_URL="https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-$ES_VERSION.deb"
     fi
 
     log "Installing Elaticsearch Version - $ES_VERSION"
 	log "Download location - $DOWNLOAD_URL"
-    sudo wget -q "$DOWNLOAD_URL" -O elasticsearch.deb
-    sudo dpkg -i elasticsearch.deb
+    sudo wget -q "$DOWNLOAD_URL" -O elasticsearch.rpm
+	rpm -ivh elasticsearch.rpm
 }
 
 install_jmeter_server()
 {
     log "download jmeter server agent"
-    apt-get -y install unzip
+    #apt-get -y install unzip
+	yum -y install unzip
+
     wget -O agent.zip http://jmeter-plugins.org/downloads/file/ServerAgent-2.2.1.zip
     mkdir /opt/jmeter-server-agent
     unzip agent.zip -d /opt/jmeter-server-agent 
@@ -475,3 +479,4 @@ exit 0
 # gateway.expected_nodes: 10
 # gateway.recover_after_time: 5m
 #----------------------
+
