@@ -124,7 +124,7 @@ EOF
     log "starting kibana service"
 	systemctl daemon-reload
     systemctl enable kibana.service
-	systemctl start kibana.service
+	systemctl start kibana.service &
 }
 
 ###############
