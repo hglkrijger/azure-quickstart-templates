@@ -33,6 +33,7 @@
     }
   },
   "variables": {
+    "apiVersion": "2015-06-15",
     "storageAccountName": "[parameters('storageSettings').prefix]",
     "storageAccountNameAFS": "[parameters('storageSettings').afs]",
     "storageAccountNameShared": "[parameters('storageSettings').shared]",
@@ -102,36 +103,30 @@
       }
     },
     {
-      "apiVersion": "2015-06-15",
-      "type": "Microsoft.Network/virtualNetworks",
-      "name": "[parameters('networkSettings').virtualNetworkName]",
+      "apiVersion": "[variables('apiVersion')]",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat(parameters('networkSettings').virtualNetworkName, '/', parameters('networkSettings').subnet.master.name)]",
       "location": "[resourceGroup().location]",
       "properties": {
-        "addressSpace": {
-          "addressPrefixes": [
-            "[parameters('networkSettings').addressPrefix]"
-          ]
-        },
-        "subnets": [
-          {
-            "name": "[parameters('networkSettings').subnet.master.name]",
-            "properties": {
-              "addressPrefix": "[parameters('networkSettings').subnet.master.prefix]"
-            }
-          },
-          {
-            "name": "[parameters('networkSettings').subnet.data.name]",
-            "properties": {
-              "addressPrefix": "[parameters('networkSettings').subnet.data.prefix]"
-            }
-          },
-          {
-            "name": "[parameters('networkSettings').subnet.other.name]",
-            "properties": {
-              "addressPrefix": "[parameters('networkSettings').subnet.other.prefix]"
-            }
-          }
-        ]
+        "addressPrefix": "[parameters('networkSettings').subnet.master.prefix]"
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersion')]",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat(parameters('networkSettings').virtualNetworkName, '/', parameters('networkSettings').subnet.data.name)]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressPrefix": "[parameters('networkSettings').subnet.data.prefix]"
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersion')]",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat(parameters('networkSettings').virtualNetworkName, '/', parameters('networkSettings').subnet.other.name)]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressPrefix": "[parameters('networkSettings').subnet.other.prefix]"
       }
     },
     {
