@@ -257,7 +257,7 @@ EOF
     log "starting agent service"
 	systemctl daemon-reload
     systemctl enable jmeter-server-agent.service
-	systemctl start jmeter-server-agent.service
+	systemctl start jmeter-server-agent.service &
 }
 
 # Primary Install Tasks
@@ -453,6 +453,6 @@ fi
 log "Starting Elasticsearch on ${HOSTNAME}"
 systemctl daemon-reload
 systemctl enable elasticsearch.service
-systemctl start elasticsearch.service
+systemctl start elasticsearch.service &
 log "complete elasticsearch setup and started"
 exit 0
