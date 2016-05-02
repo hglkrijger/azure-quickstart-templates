@@ -223,7 +223,7 @@ install_es()
 
     log "Installing Elaticsearch Version - $ES_VERSION"
 	log "Download location - $DOWNLOAD_URL"
-    sudo wget -q "$DOWNLOAD_URL" -O elasticsearch.rpm
+    wget -q "$DOWNLOAD_URL" -O elasticsearch.rpm
 	rpm -ivh elasticsearch.rpm
 }
 
@@ -238,20 +238,26 @@ install_jmeter_server()
     unzip agent.zip -d /opt/jmeter-server-agent 
     
     log "updating iptables"
-    sudo iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 4444 -j ACCEPT
+    iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 4444 -j ACCEPT
     
     log "setup agent service"
-    cat << EOF > /etc/init/jmeter-server-agent.conf
-    description "JMeter Server Agent"
 
-    start on starting
-    script
-        /opt/jmeter-server-agent/startAgent.sh
-    end script
+    cat << EOF > /etc/systemd/system/jmeter-server-agent.service
+[Unit]
+Description=Start jmeter service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "/opt/jmeter-server-agent/startAgent.sh"
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
     log "starting agent service"
-    service jmeter-server-agent start
+	systemctl daemon-reload
+    systemctl enable jmeter-server-agent.service
+	systemctl start jmeter-server-agent.service
 }
 
 # Primary Install Tasks
@@ -276,7 +282,7 @@ else
     log "setting up disks"
     
     #Format data disks (Find data disks then partition, format, and mount them as separate drives)
-    bash vm-disk-utils-0.1.sh    
+    bash vm-disk-utils-0.1.sh
 fi
 
 #Install Oracle Java
@@ -444,39 +450,9 @@ if [ ${INSTALL_CLOUD_AZURE} -ne 0 ]; then
     fi
 fi
 
-#Install Monit
-#TODO - Install Monit to monitor the process (Although load balancer probes can accomplish this)
-
-#and... start the service
 log "Starting Elasticsearch on ${HOSTNAME}"
-update-rc.d elasticsearch defaults 95 10
-sudo service elasticsearch start
+systemctl daemon-reload
+systemctl enable elasticsearch.service
+systemctl start elasticsearch.service
 log "complete elasticsearch setup and started"
 exit 0
-
-#Script Extras
-
-#Configure open file and memory limits
-#Swap is disabled by default in Ubuntu Azure VMs
-#echo "bootstrap.mlockall: true" >> /etc/elasticsearch/elasticsearch.yml
-
-# Verify this is necessary on azure
-#echo "elasticsearch    -    nofile    65536" >> /etc/security/limits.conf
-#echo "elasticsearch     -    memlock   unlimited" >> /etc/security/limits.conf
-#echo "session    required    pam_limits.so" >> /etc/pam.d/su
-#echo "session    required    pam_limits.so" >> /etc/pam.d/common-session
-#echo "session    required    pam_limits.so" >> /etc/pam.d/common-session-noninteractive
-#echo "session    required    pam_limits.so" >> /etc/pam.d/sudo
-
-#--------------- TEMP (We will use this for the update path yet) ---------------
-#Updating the properties in the existing configuraiton has been a bit sensitve and requires more testing
-#sed -i -e "/cluster\.name/s/^#//g;s/^\(cluster\.name\s*:\s*\).*\$/\1${CLUSTER_NAME}/" /etc/elasticsearch/elasticsearch.yml
-#sed -i -e "/bootstrap\.mlockall/s/^#//g;s/^\(bootstrap\.mlockall\s*:\s*\).*\$/\1true/" /etc/elasticsearch/elasticsearch.yml
-#sed -i -e "/path\.data/s/^#//g;s/^\(path\.data\s*:\s*\).*\$/\1${DATAPATH_CONFIG}/" /etc/elasticsearch/elasticsearch.yml
-
-# Minimum master nodes nodes/2+1 (These can be configured via API as well - (_cluster/settings))
-# discovery.zen.minimum_master_nodes: 2
-# gateway.expected_nodes: 10
-# gateway.recover_after_time: 5m
-#----------------------
-

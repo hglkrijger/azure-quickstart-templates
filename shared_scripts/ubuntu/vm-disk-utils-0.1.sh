@@ -63,6 +63,7 @@ fi
 
 # Base path for data disk mount points
 DATA_BASE="/datadisks"
+RAID_CONFIGURATION=0
 
 while getopts b:sh optname; do
     log "Option $optname set with value ${OPTARG}"
@@ -305,7 +306,7 @@ check_mdadm() {
 # Create Partitions
 DISKS=$(scan_for_new_disks)
 
-if [ "$RAID_CONFIGURATION" -eq 1 ]; then
+if [ "${RAID_CONFIGURATION}" -eq 1 ]; then
     check_mdadm
     create_striped_volume "${DISKS[@]}"
 else
