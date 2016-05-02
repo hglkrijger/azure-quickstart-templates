@@ -70,8 +70,8 @@ install_kibana() {
         kibana_url="https://download.elastic.co/kibana/kibana/kibana-4.1.6-linux-x64.tar.gz"
     fi
     
-    groupadd -g 999 kibana
-    useradd -u 999 -g 999 kibana
+    groupadd -g 990 kibana
+    useradd -u 990 -g 990 kibana
 
     mkdir -p /opt/kibana
     curl -s -o kibana.tar.gz ${kibana_url}
@@ -109,19 +109,22 @@ install_kibana() {
         # for 1.x sense is not supported 
     fi
 
-# Add upstart task and start kibana service
-cat << EOF > /etc/init.d/kibana.conf
-    # kibana
-    description "Elasticsearch Kibana Service"
+	cat << EOF > /etc/systemd/system/kibana.service
+[Unit]
+Description=Start kibana service
 
-    start on starting
-    script
-        /opt/kibana/bin/kibana
-    end script
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "/opt/kibana/bin/kibana"
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-    chmod +x /etc/init.d/kibana.conf
-    service kibana start
+    log "starting kibana service"
+	systemctl daemon-reload
+    systemctl enable kibana.service
+	systemctl start kibana.service
 }
 
 ###############
