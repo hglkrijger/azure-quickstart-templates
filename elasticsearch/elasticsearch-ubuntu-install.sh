@@ -279,7 +279,7 @@ then
     # create and mount an AFS share
     #bash afs-utils-0.1.sh -cp -a ${STORAGE_ACCOUNT} -k ${ACCESS_KEY}
 
-	bash lustre_client.sh -n OpenLogic:CentOS-HPC:7.1 -n 0 -d 0 -m 10.0.3.4 -l 10.0.0.255 -f sharedfs
+	bash lustre_client.sh -n OpenLogic:CentOS-HPC:7.1 -i 0 -d 0 -m 10.0.3.4 -l 10.0.0.255 -f sharedfs
 else
     log "setting up disks"
     
