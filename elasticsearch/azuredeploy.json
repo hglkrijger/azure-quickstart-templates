@@ -304,6 +304,7 @@
   "variables": {
     "templateBaseUrl": "[concat(parameters('templateBase'), '/elasticsearch/')]",
     "scriptBaseUrl": "[concat(parameters('templateBase'), '/shared_scripts/ubuntu/')]",
+    "lustreScriptBaseUrl": "[concat(parameters('templateBase'), '/intel-lustre-clients-on-centos/')]",
     "storageAccountPrefix": "[concat(substring(uniqueString(resourceGroup().id, parameters('esClusterName')), 0, 6), substring(parameters('esClusterName'), 0, 3))]",
     "storageAccountNameAFS": "[concat(variables('storageAccountPrefix'), 'afs')]",
     "storageAccountNameShared": "[concat(variables('storageAccountPrefix'), 'sh')]",
@@ -429,7 +430,8 @@
       "[concat(variables('templateBaseUrl'), 'elasticsearch-ubuntu-install.sh')]",
       "[concat(variables('templateBaseUrl'), 'kibana-install.sh')]",
       "[concat(variables('scriptBaseUrl'), 'vm-disk-utils-0.1.sh')]",
-      "[concat(variables('scriptBaseUrl'), 'afs-utils-0.1.sh')]"
+      "[concat(variables('scriptBaseUrl'), 'afs-utils-0.1.sh')]",
+      "[concat(variables('lustreScriptBaseUrl'), 'lustre_client.sh')]"
     ],
     "windowsScripts": [
       "[concat(variables('templateBaseUrl'), 'elasticsearch-windows-install.ps1')]",

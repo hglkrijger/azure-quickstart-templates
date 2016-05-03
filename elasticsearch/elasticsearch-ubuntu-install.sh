@@ -277,7 +277,9 @@ then
     ##service cachefilesd start
 
     # create and mount an AFS share
-    bash afs-utils-0.1.sh -cp -a ${STORAGE_ACCOUNT} -k ${ACCESS_KEY}
+    #bash afs-utils-0.1.sh -cp -a ${STORAGE_ACCOUNT} -k ${ACCESS_KEY}
+
+	bash lustre_client.sh -n OpenLogic:CentOS-HPC:7.1 -n 0 -d 0 -m 10.0.3.4 -l 10.0.0.255 -f sharedfs
 else
     log "setting up disks"
     
@@ -347,7 +349,7 @@ if [ ${USE_AFS} -ne 0 ];
 then
     echo "node.enable_custom_paths: true" >> /etc/elasticsearch/elasticsearch.yml
     echo "node.add_id_to_custom_path: false" >> /etc/elasticsearch/elasticsearch.yml
-    echo "path.shared_data: /sharedfs" >> /etc/elasticsearch/elasticsearch.yml        
+    echo "path.shared_data: /mnt/sharedfs" >> /etc/elasticsearch/elasticsearch.yml        
 fi
 
 # Configure discovery
