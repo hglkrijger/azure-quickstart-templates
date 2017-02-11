@@ -146,7 +146,7 @@ install_es()
     then
         apt-get install -y packetbeat
         update-rc.d packetbeat defaults 95 0
-
+            
         apt-get install -y metricbeat
         update-rc.d metricbeat defaults 95 0        
     fi
