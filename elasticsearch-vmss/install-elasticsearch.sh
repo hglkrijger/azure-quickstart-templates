@@ -28,6 +28,7 @@ help()
     echo "This script installs Elasticsearch on Ubuntu"
     echo "Parameters:"
     echo "  -n elasticsearch cluster name"
+    echo "  -b install beats"
     echo "  -m configure as master node (default: off)"
     echo "  -h view this help content"
 }
@@ -64,9 +65,10 @@ fi
 CLUSTER_NAME="es-azure"
 ES_VERSION="5.1.2"
 IS_DATA_NODE=1
+INSTALL_BEATS=0
 
 #Loop through options passed
-while getopts :n:mh optname; do
+while getopts :n:mbh optname; do
   log "Option $optname set with value ${OPTARG}"
   case $optname in
     n) #set cluster name
@@ -74,6 +76,9 @@ while getopts :n:mh optname; do
       ;;
     m) #set master mode
       IS_DATA_NODE=0
+      ;;
+    b) #install beats
+      INSTALL_BEATS=1
       ;;
     h) #show help
       help
@@ -136,6 +141,16 @@ install_es()
     pushd /usr/share/elasticsearch/
     bin/elasticsearch-plugin install x-pack --batch
     popd
+
+    if [ ${INSTALL_BEATS} -eq 1 ]; 
+    then
+        apt-get install -y packetbeat
+        update-rc.d packetbeat defaults 95 0
+
+        apt-get install -y metricbeat
+        update-rc.d metricbeat defaults 95 0        
+    fi
+
     
     if [ ${IS_DATA_NODE} -eq 0 ]; 
     then

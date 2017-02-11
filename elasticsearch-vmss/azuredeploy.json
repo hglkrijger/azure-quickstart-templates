@@ -324,32 +324,31 @@
               "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'), copyindex()))]"
             }
           ]
-        }
-      },
-      "resources": [
-        {
-          "type": "Microsoft.Compute/virtualMachines/extensions",
-          "name": "[concat(variables('masterName'), copyindex(), '/installelasticsearch')]",
-          "apiVersion": "2016-04-30-preview",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[concat('Microsoft.Compute/virtualMachines/', variables('masterName'), copyindex())]"
-          ],
-          "properties": {
-            "publisher": "Microsoft.Azure.Extensions",
-            "type": "CustomScript",
-            "typeHandlerVersion": "2.0",
-            "autoUpgradeMinorVersion": true,
-            "settings": {
-              "fileUris": [
-                "[concat(variables('templateBaseUrl'), 'install-elasticsearch.sh')]",
-                "[variables('diskSetupScriptUrl')]"
-              ],
-              "commandToExecute": "[concat('bash install-elasticsearch.sh -m -n ', parameters('clusterName'))]"
-            }
+        },
+        "resources": [
+          {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('masterName'), copyindex(), '/installelasticsearch')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+              "[concat('Microsoft.Compute/virtualMachines/', variables('masterName'), copyindex())]"
+            ],
+            "properties": {
+                  "publisher": "Microsoft.Azure.Extensions",
+                  "type": "CustomScript",
+                  "typeHandlerVersion": "2.0",
+                  "autoUpgradeMinorVersion": true,
+                  "settings": {
+                    "fileUris": [
+                      "[concat(variables('templateBaseUrl'), 'install-elasticsearch.sh')]"
+                    ],
+                    "commandToExecute": "[concat('bash install-elasticsearch.sh -m -b -n ', parameters('clusterName'))]"
+                  }
+                }
           }
-        }
-      ]
+        ]
+      }
     },
     {
       "type": "Microsoft.Compute/virtualMachineScaleSets",
@@ -429,7 +428,7 @@
                     "fileUris": [
                       "[concat(variables('templateBaseUrl'), 'install-elasticsearch.sh')]"
                     ],
-                    "commandToExecute": "[concat('bash install-elasticsearch.sh -n ', parameters('clusterName'))]"
+                    "commandToExecute": "[concat('bash install-elasticsearch.sh -b -n ', parameters('clusterName'))]"
                   }
                 }
               }
