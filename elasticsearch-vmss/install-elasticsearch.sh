@@ -149,6 +149,18 @@ install_es()
             
         apt-get install -y metricbeat
         update-rc.d metricbeat defaults 95 0        
+
+        sed -i 's/8002/8002, 9200/g' /etc/packetbeat/packetbeat.yml
+        sed -i 's/"localhost:9200"/"10.0.0.10:9200","10.0.0.11:9200","10.0.0.12:9200"/g' /etc/packetbeat/packetbeat.yml
+
+        sed -i 's/#- socket/- socket/g' /etc/metricbeat/metricbeat.yml
+        sed -i 's/"localhost:9200"/"10.0.0.10:9200","10.0.0.11:9200","10.0.0.12:9200"/g' /etc/metricbeat/metricbeat.yml
+
+        systemctl enable metricbeat.service
+        systemctl start metricbeat.service
+        
+        systemctl enable packetbeat.service
+        systemctl start packetbeat.service
     fi
 
     
