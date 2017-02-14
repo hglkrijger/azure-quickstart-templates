@@ -263,6 +263,14 @@ start_service()
             exit 1
         fi    
     fi
+
+    if [ ${INSTALL_BEATS} -eq 1 ]; 
+    then
+        IPADDRESS=$(ip route get 8.8.8.8 | awk 'NR==1 {print $NF}')
+        log "Installing dashboards into $IPADDRESS"
+        /usr/share/metricbeat/scripts/import_dashboards -es http://${IPADDRESS}:9200
+        /usr/share/packetbeat/scripts/import_dashboards -es http://${IPADDRESS}:9200
+    fi
 }
 
 log "starting elasticsearch setup"
